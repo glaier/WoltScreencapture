@@ -1,6 +1,6 @@
 import os
 import sys
-from PIL import Image, ImageChops
+from PIL import Image
 import numpy as np
 
 def remove_common_header_and_footer(image, header_height=100, footer_height=100):
@@ -25,7 +25,7 @@ def find_overlap(img1, img2):
 
     # Compare bottom part of img1 with top part of img2
     for offset in range(1, max_overlap):
-        diff = np.sum(np.abs(img1_np[-offset:] - img2_np[:offset]))
+        diff = np.sum(np.bitwise_xor(img1_np[-offset:], img2_np[:offset]))
         if diff < min_diff:
             min_diff = diff
             best_offset = offset
