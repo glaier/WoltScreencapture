@@ -3,8 +3,8 @@ import sys
 from PIL import Image
 import numpy as np
 
-def remove_non_white_header_footer(image):
-    """Removes the top (header) and bottom (footer) parts of the image that have a non-white background."""
+def remove_header_footer(image):
+    """Removes the header and footer based on specific visual markers."""
     image_np = np.array(image)
 
     # Convert image to RGB if it has an alpha channel
@@ -12,34 +12,35 @@ def remove_non_white_header_footer(image):
         image_np = image.convert('RGB')
         image_np = np.array(image_np)
 
-    # Create a mask where True indicates white pixels
-    white_mask = np.all(image_np == [255, 255, 255], axis=-1)
+    height, width, _ = image_np.shape
 
-    # Find the first non-white row from the top
-    top_crop = 0
-    for i in range(white_mask.shape[0]):
-        if not white_mask[i].all():
-            top_crop = i
+    # Detect the header by searching for the horizontal bar below "Leveringer"
+    header_end = 0
+    for i in range(height):
+        # Look for the first non-white horizontal line, indicating the end of the header
+        if not np.all(image_np[i, :] == [255, 255, 255]):
+            header_end = i + 1
             break
 
-    # Find the first non-white row from the bottom
-    bottom_crop = white_mask.shape[0]
-    for i in range(white_mask.shape[0] - 1, -1, -1):
-        if not white_mask[i].all():
-            bottom_crop = i
+    # Detect the footer by searching for the black bar at the bottom with navigation symbols
+    footer_start = height
+    for i in range(height - 1, -1, -1):
+        # Look for the first dark horizontal line, indicating the start of the footer
+        if np.all(image_np[i, :] < [50, 50, 50]):  # Dark line threshold
+            footer_start = i
             break
 
-    # Crop the image to remove the non-white header and footer
-    cropped_image = image.crop((0, top_crop, image.width, bottom_crop + 1))
+    # Crop the image to remove the header and footer
+    cropped_image = image.crop((0, header_end, width, footer_start))
 
     return cropped_image
 
 def save_temp_images(image_paths):
-    """Remove non-white headers and footers from images and save them with a '_temp' postfix."""
+    """Remove headers and footers from images and save them with a '_temp' postfix."""
     temp_image_paths = []
     for image_path in image_paths:
         img = Image.open(image_path)
-        img = remove_non_white_header_footer(img)
+        img = remove_header_footer(img)
         
         # Generate new filename with _temp postfix
         base, ext = os.path.splitext(image_path)
