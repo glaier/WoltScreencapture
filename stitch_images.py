@@ -1,20 +1,21 @@
 import os
 import sys
-from PIL import Image
+from PIL import Image, ImageChops
 import numpy as np
+
+def remove_common_header_and_footer(image, header_height=100, footer_height=100):
+    """Removes common header and footer from an image."""
+    width, height = image.size
+    return image.crop((0, header_height, width, height - footer_height))
 
 def find_overlap(img1, img2):
     """Finds the vertical overlap between the bottom of img1 and the top of img2."""
-    img1_np = np.array(img1)
-    img2_np = np.array(img2)
+    img1_bw = img1.convert('1')  # Convert to black-and-white
+    img2_bw = img2.convert('1')  # Convert to black-and-white
 
-    # Convert to grayscale if they are not already
-    if img1_np.ndim == 3:
-        img1_np = np.mean(img1_np, axis=2).astype(np.uint8)
-    if img2_np.ndim == 3:
-        img2_np = np.mean(img2_np, axis=2).astype(np.uint8)
+    img1_np = np.array(img1_bw)
+    img2_np = np.array(img2_bw)
 
-    # Calculate the region of img1 to compare
     h1 = img1_np.shape[0]
     h2 = img2_np.shape[0]
     
@@ -36,9 +37,11 @@ def stitch_images(images):
 
     for i in range(1, len(images)):
         overlap = find_overlap(stitched_image, images[i])
-        stitched_image = Image.new('RGB', (stitched_image.width, stitched_image.height + images[i].height - overlap))
-        stitched_image.paste(images[i-1], (0, 0))
-        stitched_image.paste(images[i], (0, images[i-1].height - overlap))
+        new_height = stitched_image.height + images[i].height - overlap
+        stitched_result = Image.new('RGB', (stitched_image.width, new_height))
+        stitched_result.paste(stitched_image, (0, 0))
+        stitched_result.paste(images[i], (0, stitched_image.height - overlap))
+        stitched_image = stitched_result
 
     return stitched_image
 
@@ -58,7 +61,12 @@ def main(args):
         print("No images found to stitch.")
         sys.exit(1)
 
-    image_objs = [Image.open(image) for image in images]
+    image_objs = []
+    for image in images:
+        img = Image.open(image)
+        # Remove common headers and footers
+        img = remove_common_header_and_footer(img)
+        image_objs.append(img)
 
     stitched_image = stitch_images(image_objs)
     
