@@ -3,6 +3,30 @@ import sys
 from PIL import Image
 import numpy as np
 
+def find_shaded_header_line(image_np):
+    """Find the bottom of the shaded horizontal line indicating the end of the header."""
+    height, width, _ = image_np.shape
+    for i in range(height):
+        # Detect transition from white to shaded line (gray or darker pixels)
+        if np.any(image_np[i, :] < [220, 220, 220]):
+            # Scan downward until we pass the shaded line (can check for a dip in brightness)
+            while i < height and np.any(image_np[i, :] < [220, 220, 220]):
+                i += 1
+            return i
+    return 0
+
+def find_black_footer_start(image_np):
+    """Find the start of the black footer at the bottom of the image."""
+    height, width, _ = image_np.shape
+    for i in range(height - 1, -1, -1):
+        # Look for a continuous section of dark pixels (footer)
+        if np.all(image_np[i, :] < [50, 50, 50]):  # Footer line threshold
+            # Scan upward until we leave the black area
+            while i >= 0 and np.all(image_np[i, :] < [50, 50, 50]):
+                i -= 1
+            return i + 1
+    return height
+
 def remove_header_footer(image):
     """Removes the header and footer based on specific visual markers."""
     image_np = np.array(image)
@@ -14,21 +38,11 @@ def remove_header_footer(image):
 
     height, width, _ = image_np.shape
 
-    # Detect the header by searching for the horizontal bar below "Leveringer"
-    header_end = 0
-    for i in range(height):
-        # Look for the first non-white horizontal line, indicating the end of the header
-        if not np.all(image_np[i, :] == [255, 255, 255]):
-            header_end = i + 1
-            break
+    # Detect the end of the header (just below the shaded line)
+    header_end = find_shaded_header_line(image_np)
 
-    # Detect the footer by searching for the black bar at the bottom with navigation symbols
-    footer_start = height
-    for i in range(height - 1, -1, -1):
-        # Look for the first dark horizontal line, indicating the start of the footer
-        if np.all(image_np[i, :] < [50, 50, 50]):  # Dark line threshold
-            footer_start = i
-            break
+    # Detect the start of the footer (just above the black footer)
+    footer_start = find_black_footer_start(image_np)
 
     # Crop the image to remove the header and footer
     cropped_image = image.crop((0, header_end, width, footer_start))
