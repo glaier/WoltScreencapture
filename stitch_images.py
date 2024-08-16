@@ -1,12 +1,30 @@
 import os
 import sys
-from PIL import Image
+from PIL import Image, ImageChops
 import numpy as np
 
-def remove_common_header_and_footer(image, header_height=100, footer_height=100):
-    """Removes common header and footer from an image."""
-    width, height = image.size
-    return image.crop((0, header_height, width, height - footer_height))
+def remove_non_white_background(image):
+    """Removes parts of the image with a non-white background."""
+    image_np = np.array(image)
+    
+    # Assuming the image is in RGB format
+    # Create a mask where True indicates white pixels
+    white_mask = np.all(image_np == [255, 255, 255], axis=-1)
+    
+    # Find the bounding box of the non-white area
+    non_white_pixels = np.where(~white_mask)
+    
+    if non_white_pixels[0].size == 0 or non_white_pixels[1].size == 0:
+        # If the image is completely white, return None
+        return None
+    
+    top = np.min(non_white_pixels[0])
+    bottom = np.max(non_white_pixels[0])
+    left = np.min(non_white_pixels[1])
+    right = np.max(non_white_pixels[1])
+
+    # Crop the image to the bounding box
+    return image.crop((left, top, right, bottom))
 
 def find_overlap(img1, img2):
     """Finds the vertical overlap between the bottom of img1 and the top of img2."""
@@ -64,9 +82,14 @@ def main(args):
     image_objs = []
     for image in images:
         img = Image.open(image)
-        # Remove common headers and footers
-        img = remove_common_header_and_footer(img)
-        image_objs.append(img)
+        # Remove any part of the image that has a non-white background
+        img = remove_non_white_background(img)
+        if img:
+            image_objs.append(img)
+
+    if not image_objs:
+        print("All images were completely white or had no significant content after removing non-white backgrounds.")
+        sys.exit(1)
 
     stitched_image = stitch_images(image_objs)
     
