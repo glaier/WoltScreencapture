@@ -1,32 +1,39 @@
 import os
 import sys
-from PIL import Image, ImageChops
+from PIL import Image
 import numpy as np
 
-def remove_non_white_background(image):
-    """Removes parts of the image with a non-white background (headers and footers)."""
-    # Convert to RGB if image has an alpha channel
-    if image.mode == 'RGBA':
-        image = image.convert('RGB')
-    
+def remove_non_white_header_footer(image):
+    """Removes the top (header) and bottom (footer) parts of the image that have a non-white background."""
     image_np = np.array(image)
+    
+    # Convert image to RGB if it has an alpha channel
+    if image.mode == 'RGBA':
+        image_np = image.convert('RGB')
+        image_np = np.array(image_np)
     
     # Create a mask where True indicates white pixels
     white_mask = np.all(image_np == [255, 255, 255], axis=-1)
     
-    # Find the bounding box of the non-white area (top and bottom only)
-    non_white_rows = np.where(~white_mask.any(axis=1))[0]
+    # Identify the top part (header) and bottom part (footer) that are non-white
+    non_white_rows_top = np.where(~white_mask.any(axis=1))[0]
+    non_white_rows_bottom = np.where(~white_mask.any(axis=1))[0]
     
-    if non_white_rows.size == 0:
-        # If the image is completely white, return None
-        return None
+    # Determine where the header ends and the footer begins
+    if non_white_rows_top.size > 0:
+        top_crop = non_white_rows_top[0]
+    else:
+        top_crop = 0
     
-    # Determine top and bottom bounds
-    top = non_white_rows[0]
-    bottom = non_white_rows[-1]
-
-    # Crop the image to remove the non-white header and footer
-    return image.crop((0, top, image.width, bottom + 1))
+    if non_white_rows_bottom.size > 0:
+        bottom_crop = non_white_rows_bottom[-1]
+    else:
+        bottom_crop = image.height
+    
+    # Crop the image to remove the header and footer
+    cropped_image = image.crop((0, top_crop, image.width, bottom_crop + 1))
+    
+    return cropped_image
 
 def find_overlap(img1, img2):
     """Finds the vertical overlap between the bottom of img1 and the top of img2."""
@@ -84,10 +91,9 @@ def main(args):
     image_objs = []
     for image in images:
         img = Image.open(image)
-        # Remove non-white headers and footers
-        img = remove_non_white_background(img)
-        if img:
-            image_objs.append(img)
+        # Remove non-white header and footer
+        img = remove_non_white_header_footer(img)
+        image_objs.append(img)
 
     if not image_objs:
         print("All images were completely white or had no significant content after removing non-white backgrounds.")
