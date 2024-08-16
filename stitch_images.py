@@ -14,25 +14,40 @@ def remove_non_white_header_footer(image):
 
     # Create a mask where True indicates white pixels
     white_mask = np.all(image_np == [255, 255, 255], axis=-1)
-    
-    # Find the first row from the top that contains non-white pixels (header end)
-    non_white_rows_top = np.where(~white_mask.any(axis=1))[0]
-    if non_white_rows_top.size > 0:
-        top_crop = non_white_rows_top[0]
-    else:
-        top_crop = 0
-    
-    # Find the first row from the bottom that contains non-white pixels (footer start)
-    non_white_rows_bottom = np.where(~white_mask.any(axis=1))[0]
-    if non_white_rows_bottom.size > 0:
-        bottom_crop = non_white_rows_bottom[-1]
-    else:
-        bottom_crop = image.height
+
+    # Find the first non-white row from the top
+    top_crop = 0
+    for i in range(white_mask.shape[0]):
+        if not white_mask[i].all():
+            top_crop = i
+            break
+
+    # Find the first non-white row from the bottom
+    bottom_crop = white_mask.shape[0]
+    for i in range(white_mask.shape[0] - 1, -1, -1):
+        if not white_mask[i].all():
+            bottom_crop = i
+            break
 
     # Crop the image to remove the non-white header and footer
     cropped_image = image.crop((0, top_crop, image.width, bottom_crop + 1))
-    
+
     return cropped_image
+
+def save_temp_images(image_paths):
+    """Remove non-white headers and footers from images and save them with a '_temp' postfix."""
+    temp_image_paths = []
+    for image_path in image_paths:
+        img = Image.open(image_path)
+        img = remove_non_white_header_footer(img)
+        
+        # Generate new filename with _temp postfix
+        base, ext = os.path.splitext(image_path)
+        temp_image_path = f"{base}_temp{ext}"
+        img.save(temp_image_path)
+        temp_image_paths.append(temp_image_path)
+    
+    return temp_image_paths
 
 def find_overlap(img1, img2):
     """Finds the vertical overlap between the bottom of img1 and the top of img2."""
@@ -79,24 +94,19 @@ def main(args):
 
     if os.path.isdir(args[1]):
         folder_path = args[1]
-        images = sorted([os.path.join(folder_path, file) for file in os.listdir(folder_path) if file.lower().endswith('.png')])
+        image_paths = sorted([os.path.join(folder_path, file) for file in os.listdir(folder_path) if file.lower().endswith('.png')])
     else:
-        images = args[1:]
+        image_paths = args[1:]
 
-    if not images:
-        print("No images found to stitch.")
+    if not image_paths:
+        print("No images found to process.")
         sys.exit(1)
 
-    image_objs = []
-    for image in images:
-        img = Image.open(image)
-        # Remove non-white header and footer
-        img = remove_non_white_header_footer(img)
-        image_objs.append(img)
+    # Remove headers and footers and save the images with a '_temp' postfix
+    temp_image_paths = save_temp_images(image_paths)
 
-    if not image_objs:
-        print("All images were completely white or had no significant content after removing non-white backgrounds.")
-        sys.exit(1)
+    # Load the temp images for stitching
+    image_objs = [Image.open(temp_image) for temp_image in temp_image_paths]
 
     stitched_image = stitch_images(image_objs)
     
