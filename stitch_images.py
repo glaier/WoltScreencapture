@@ -17,7 +17,6 @@ def compute_overlap(img1, img2):
     max_overlap = 0
     best_overlap = 0
 
-    # Check for overlapping region
     for offset in range(-height2 + 1, height1):
         if offset < 0:
             img1_part = np.array(img1_gray.crop((0, -offset, width, height1)))
@@ -26,44 +25,45 @@ def compute_overlap(img1, img2):
             img1_part = np.array(img1_gray.crop((0, 0, width, height1 - offset)))
             img2_part = np.array(img2_gray.crop((0, offset, width, height2)))
 
-        overlap = np.sum(img1_part == img2_part)
+        # Ensure parts are of the same size for comparison
+        min_height = min(img1_part.shape[0], img2_part.shape[0])
+        overlap = np.sum(img1_part[:min_height] == img2_part[:min_height])
+        
         if overlap > max_overlap:
             max_overlap = overlap
             best_overlap = offset
 
     return best_overlap
 
-def adjust_header(img2, max_overlap):
+def adjust_header(img2, img1, max_overlap):
     """Remove the header from the second image based on the maximum overlap."""
     img2_gray = image_to_grayscale(img2)
     width, height = img2_gray.size
+
     best_overlap = max_overlap
     previous_overlap = -1
 
-    # Incrementally remove rows from the top of img2 until overlap decreases
     for top in range(height):
-        img2_part = np.array(img2_gray.crop((0, top, width, height)))
-        if top > 0:
-            previous_overlap = compute_overlap(img1, Image.fromarray(img2_part))
-        if previous_overlap < max_overlap:
+        img2_part = img2_gray.crop((0, top, width, height))
+        current_overlap = compute_overlap(img1, img2_part)
+        if current_overlap < max_overlap:
             img2 = img2.crop((0, top, width, height))
             break
 
     return img2
 
-def adjust_footer(img1, max_overlap):
+def adjust_footer(img1, img2, max_overlap):
     """Remove the footer from the first image based on the maximum overlap."""
     img1_gray = image_to_grayscale(img1)
     width, height = img1_gray.size
+
     best_overlap = max_overlap
     previous_overlap = -1
 
-    # Incrementally remove rows from the bottom of img1 until overlap decreases
     for bottom in range(height):
-        img1_part = np.array(img1_gray.crop((0, 0, width, height - bottom)))
-        if bottom > 0:
-            previous_overlap = compute_overlap(Image.fromarray(img1_part), img2)
-        if previous_overlap < max_overlap:
+        img1_part = img1_gray.crop((0, 0, width, height - bottom))
+        current_overlap = compute_overlap(img1_part, img2)
+        if current_overlap < max_overlap:
             img1 = img1.crop((0, 0, width, height - bottom))
             break
 
@@ -84,10 +84,10 @@ def create_long_screenshot(folder_path, output_path):
     adjusted_images = [images[0]]
     for i in range(1, len(images)):
         overlap = compute_overlap(adjusted_images[-1], images[i])
-        img1, img2 = adjust_images(adjusted_images[-1], images[i], overlap)
+        img1, img2 = adjusted_images[-1], images[i]
 
-        img2 = adjust_header(img2, overlap)
-        img1 = adjust_footer(img1, overlap)
+        img2 = adjust_header(img2, img1, overlap)
+        img1 = adjust_footer(img1, img2, overlap)
 
         adjusted_images[-1] = img1
         adjusted_images.append(img2)
