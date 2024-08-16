@@ -11,19 +11,20 @@ def compute_overlap(img1, img2):
     img1_gray = image_to_grayscale(img1)
     img2_gray = image_to_grayscale(img2)
 
-    width1, height1 = img1_gray.size
-    width2, height2 = img2_gray.size
+    width, height1 = img1_gray.size
+    _, height2 = img2_gray.size
 
     max_overlap = 0
     best_overlap = 0
 
+    # Check for overlapping region
     for offset in range(-height2 + 1, height1):
         if offset < 0:
-            img1_part = np.array(img1_gray.crop((0, -offset, width1, height1)))
-            img2_part = np.array(img2_gray.crop((0, 0, width2, height2 + offset)))
+            img1_part = np.array(img1_gray.crop((0, -offset, width, height1)))
+            img2_part = np.array(img2_gray.crop((0, 0, width, height2 + offset)))
         else:
-            img1_part = np.array(img1_gray.crop((0, 0, width1, height1 - offset)))
-            img2_part = np.array(img2_gray.crop((0, offset, width2, height2)))
+            img1_part = np.array(img1_gray.crop((0, 0, width, height1 - offset)))
+            img2_part = np.array(img2_gray.crop((0, offset, width, height2)))
 
         overlap = np.sum(img1_part == img2_part)
         if overlap > max_overlap:
@@ -35,7 +36,7 @@ def compute_overlap(img1, img2):
 def adjust_images(img1, img2, overlap):
     """Adjust the images by cropping based on the overlap value."""
     width, height1 = img1.size
-    width, height2 = img2.size
+    _, height2 = img2.size
 
     if overlap > 0:
         img1 = img1.crop((0, 0, width, height1 - overlap))
@@ -43,6 +44,7 @@ def adjust_images(img1, img2, overlap):
     elif overlap < 0:
         img1 = img1.crop((0, -overlap, width, height1))
         img2 = img2.crop((0, 0, width, height2 + overlap))
+
     return img1, img2
 
 def create_long_screenshot(folder_path, output_path):
@@ -52,12 +54,9 @@ def create_long_screenshot(folder_path, output_path):
     if not image_files:
         raise ValueError("No PNG files found in the directory.")
 
-    images = []
-    for file in image_files:
-        img = Image.open(os.path.join(folder_path, file))
-        images.append(img)
+    images = [Image.open(os.path.join(folder_path, file)) for file in image_files]
 
-    final_width = max(img.width for img in images)
+    final_width = images[0].width
     total_height = 0
 
     adjusted_images = [images[0]]
