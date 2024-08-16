@@ -49,6 +49,9 @@ def create_long_screenshot(folder_path, output_path):
     """Create a long screenshot by stitching together images."""
     image_files = sorted([f for f in os.listdir(folder_path) if f.endswith('.png')])
 
+    if not image_files:
+        raise ValueError("No PNG files found in the directory.")
+
     images = []
     for file in image_files:
         img = Image.open(os.path.join(folder_path, file))
@@ -76,8 +79,13 @@ def create_long_screenshot(folder_path, output_path):
     long_screenshot.save(output_path)
     print(f"Long screenshot saved as {output_path}")
 
-# Path to the folder containing the images
-folder_path = 'path_to_your_folder'
-output_path = os.path.join(folder_path, 'long_screenshot.png')
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        print("Usage: python stitch_images.py <folder_path>")
+        sys.exit(1)
 
-create_long_screenshot(folder_path, output_path)
+    folder_path = sys.argv[1]
+    output_path = os.path.join(folder_path, 'long_screenshot.png')
+
+    create_long_screenshot(folder_path, output_path)
