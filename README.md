@@ -2,23 +2,23 @@
 Python scripts to capture info on earnings<br>
 
 # Installing needed packages 
-sudo dnf install tesseract tesseract-langpack-dan<br>
-tesseract --list-langs<br>
-find /usr/share/ -type d -name "tessdata"<br>
-export TESSDATA_PREFIX=/usr/share/tesseract/<br>
+```sudo dnf install tesseract tesseract-langpack-dan
+tesseract --list-langs
+find /usr/share/ -type d -name "tessdata"
+export TESSDATA_PREFIX=/usr/share/tesseract/```<br>
 <br>
 You can add this line to your ~/.bashrc or ~/.bash_profile to set it permanently.<br>
 <br>
-pip install pillow<br>
+```pip install pillow```<br>
 
 
-# ConcatPNGS
+# stich_images script
 Concatenate PNG files and prepare for OCR.<br>
-python stitch_images.py image1.png image2.png image3.png<br>
+```python stitch_images.py image1.png image2.png image3.png```<br>
 <br>
 or <br>
 <br>
-python stitch_images.py /path/to/folder<br>
+```python stitch_images.py /path/to/folder```<br>
 
 
 # OCRtoTXT script
