@@ -11,20 +11,20 @@ export TESSDATA_PREFIX=/usr/share/tesseract/
 <br>
 You can add this line to your ~/.bashrc or ~/.bash_profile to set it permanently.<br>
 <br>
-``` 
+```
 pip install pillow 
 ```
 
 
 # stich_images script
 Concatenate PNG files and prepare for OCR.<br>
-``` 
+```
 python stitch_images.py image1.png image2.png image3.png
 ```
 <br>
 or <br>
 <br>
-``` 
+```
 python stitch_images.py /path/to/folder 
 ```
 
